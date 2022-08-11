@@ -1,0 +1,318 @@
+
+// Bhargav Reddy
+// bhargav2000aaa@gmail.com@gmail.com
+
+//FASTAG project
+
+
+package project;
+
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+public class FasTagAccount {
+
+	public static final int TwoWheeler = 1;
+	public static final int ThreeWheeler = 2;
+	public static final int LMVNonCommercial = 3;
+	public static final int LMVCommercial = 4;
+	public static final int HMVNonCommercial = 5;
+	public static final int HMVCommercial = 6;
+
+	public static final double TwoWheelerTollFee = 0;
+	public static final double ThreeWheelerTollFee  = 10;
+	public static final double LMVNonCommercialTollFee = 60;
+	public static final double LMVCommercialTollFee = 60;
+	public static final double HMVNonCommercialTollFee = 120;
+	public static final double HMVCommercialTollFee = 150;
+
+	public static final double TwoWheelerMinBalance = 0;
+	public static final double ThreeWheelerMinBalance = 50;
+	public static final double LMVNonCommercialMinBalance = 150;
+	public static final double LMVCommercialMinBalance = 200;
+	public static final double HMVNonCommercialMinBalance = 250;
+	public static final double HMVCommercialMinBalance = 300;
+
+
+
+	public static final Map<Integer, Double> categoryMinBalance = Stream.of(new Object[][] {
+		{ TwoWheeler, TwoWheelerMinBalance }, 
+		{ ThreeWheeler, ThreeWheelerMinBalance }, 
+		{ LMVNonCommercial, LMVNonCommercialMinBalance }, 
+		{ LMVCommercial, LMVCommercialMinBalance }, 
+		{ HMVNonCommercial, HMVNonCommercialMinBalance }, 
+		{ HMVCommercial, HMVCommercialMinBalance }, 
+	}).collect(Collectors.toMap(data -> (Integer)data[0], data -> (Double)data[1]));
+	
+	public static final Map<Integer, Double> categoryTollFee = Stream.of(new Object[][] {
+		{ TwoWheeler, TwoWheelerTollFee }, 
+		{ ThreeWheeler, ThreeWheelerTollFee }, 
+		{ LMVNonCommercial, LMVNonCommercialTollFee }, 
+		{ LMVCommercial, LMVCommercialTollFee }, 
+		{ HMVNonCommercial, HMVNonCommercialTollFee }, 
+		{ HMVCommercial, HMVCommercialTollFee }, 
+	}).collect(Collectors.toMap(data -> (Integer)data[0], data -> (Double)data[1]));
+
+	private static Integer fasTagIdGen = 100;
+	private String licensePlateId;
+	private Integer vehicleCategoryId;
+	private Integer fastTagId;
+	private double balance;
+
+	public FasTagAccount(String licensePlateId, Integer vehicleCategoryId, double balance) {
+		if(vehicleCategoryId >= 1 && vehicleCategoryId <=6  ) {
+			this.fastTagId = fasTagIdGen++;
+			this.licensePlateId = licensePlateId;
+			this.vehicleCategoryId = vehicleCategoryId;
+			this.balance = balance;
+		}
+		else {
+			System.out.println("Enter a valid category");
+		}
+	}
+	public String getLicensePlateId() {
+		return licensePlateId;
+	}
+	public void setLicensePlateId(String licensePlateId) {
+		this.licensePlateId = licensePlateId;
+	}
+	public Integer getVehicleCategoryId() {
+		return vehicleCategoryId;
+	}
+	public void setVehicleCategoryId(Integer vehicleCategoryId) {
+		if(vehicleCategoryId >= 1 && vehicleCategoryId <=6  ) {
+			this.vehicleCategoryId = vehicleCategoryId;
+		}
+		else {
+			System.out.println("Enter a valid category");
+		}
+	}
+	public Integer getFastTagId() {
+		return fastTagId;
+	}
+	public void setFastTagId(Integer fastTagId) {
+		this.fastTagId = fastTagId;
+	}
+	public double getBalance() {
+		return balance;
+	}
+	public void setBalance(double balance) {
+		this.balance = balance;
+	}
+	@Override
+	public String toString() {
+		return "FasTagAccount [licensePlateId=" + licensePlateId + ", vehicleCategoryId=" + vehicleCategoryId
+				+ ", fastTagId=" + fastTagId + ", balance=" + balance + "]";
+	}
+
+}
+
+
+package project;
+
+public interface IFasTagServices {
+
+	public boolean recognizeVehicle(int fasTagId, String licensePlateId);
+	public String rechargeFasTag(int fasTagId, String paymentInstrument, double rechargeAmount);
+	public String payToll(int fasTagId);
+}
+
+
+package project;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class FasTagServices implements IFasTagServices{
+
+	private Map<Integer, FasTagAccount> accounts = new HashMap<Integer, FasTagAccount>();
+
+	public Map<Integer, FasTagAccount> getAccounts() {
+		return accounts;
+	}
+
+	public void setAccounts(Map<Integer, FasTagAccount> accounts) {
+		this.accounts = accounts;
+	}
+
+	@Override
+	public boolean recognizeVehicle(int fasTagId, String licensePlateId) {	
+		if(accounts.get(fasTagId) != null && accounts.get(fasTagId).getLicensePlateId().equals(licensePlateId)) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	@Override
+	public String rechargeFasTag(int fasTagId, String paymentInstrument, double rechargeAmount) {
+		if(paymentInstrument.matches("[0-9]{4}[\\s][0-9]{4}[\\s][0-9]{4}[\\s][0-9]{4}$") || paymentInstrument.matches("[a-zA-Z0-9._-]+[@][a-z]+$")){
+			accounts.get(fasTagId).setBalance(rechargeAmount + accounts.get(fasTagId).getBalance());
+			return "Recharge done, new updated balance = " + accounts.get(fasTagId).getBalance();
+		}else {
+			throw new InvalidPaymentInstrumentException();
+		}
+	}
+
+	@Override
+	public String payToll(int fasTagId) {
+		
+		double balance = accounts.get(fasTagId).getBalance();
+		int category = accounts.get(fasTagId).getVehicleCategoryId();
+		
+		switch(category) {
+		case FasTagAccount.TwoWheeler:
+			if(balance < FasTagAccount.TwoWheelerMinBalance)
+				return "Low balance, recharge FasTag to reach the min balace(" + FasTagAccount.TwoWheelerMinBalance + ") or more";
+			else {
+				accounts.get(fasTagId).setBalance(balance - FasTagAccount.TwoWheelerTollFee);
+			}
+			break;
+		case FasTagAccount.ThreeWheeler:
+			if(balance < FasTagAccount.ThreeWheelerMinBalance)
+				return "Low balance, recharge FasTag to reach the min balace(" + FasTagAccount.ThreeWheelerMinBalance + ") or more";
+			else {
+				accounts.get(fasTagId).setBalance(balance - FasTagAccount.ThreeWheelerTollFee);
+			}
+			break;
+		case FasTagAccount.LMVNonCommercial:
+			if(balance < FasTagAccount.LMVNonCommercialMinBalance)
+				return "Low balance, recharge FasTag to reach the min balace(" + FasTagAccount.LMVNonCommercialMinBalance + ") or more";
+			else {
+				accounts.get(fasTagId).setBalance(balance - FasTagAccount.LMVNonCommercialTollFee);
+			}
+			break;
+		case FasTagAccount.LMVCommercial:
+			if(balance < FasTagAccount.LMVCommercialMinBalance)
+				return "Low balance, recharge FasTag to reach the min balace(" + FasTagAccount.LMVCommercialMinBalance + ") or more";
+			else {
+				accounts.get(fasTagId).setBalance(balance - FasTagAccount.LMVCommercialTollFee);
+			}
+			break;
+		case FasTagAccount.HMVNonCommercial:
+			if(balance < FasTagAccount.HMVNonCommercialMinBalance)
+				return "Low balance, recharge FasTag to reach the min balace(" + FasTagAccount.HMVNonCommercialMinBalance + ") or more";
+			else {
+				accounts.get(fasTagId).setBalance(balance - FasTagAccount.HMVNonCommercialTollFee);
+			}
+			break;
+		case FasTagAccount.HMVCommercial:
+			if(balance < FasTagAccount.HMVCommercialMinBalance)
+				return "Low balance, recharge FasTag to reach the min balace(" + FasTagAccount.HMVCommercialMinBalance + ") or more";
+			else {
+				accounts.get(fasTagId).setBalance(balance - FasTagAccount.HMVCommercialTollFee);
+			}
+			break;
+		}
+		return "Toll fees paid, updated balance = " + accounts.get(fasTagId).getBalance();
+	}
+
+}
+
+
+package project;
+
+import java.util.Scanner;
+
+public class FasTagMain {
+
+	public void rechargeStepsAndPayment(Scanner s, FasTagServices fasTagServices, int fasTagId) {
+		System.out.println("Do you want to recharge your Fastag?(Y/N)");
+		String recharge = s.next();
+		int flag = 0;
+		if(recharge.equals("Y")) {
+			while(recharge.equals("Y")) {
+				s.nextLine();
+				System.out.println("Enter card number or UPI");
+				String paymentInstrument = s.nextLine();
+				System.out.println("Enter amount to recharge");
+				double rechargeAmount = Double.valueOf(s.nextLine());
+				System.out.println(fasTagServices.rechargeFasTag(fasTagId, paymentInstrument, rechargeAmount));
+				System.out.println("Do you want to recharge again?(Y/N)");
+				String again = s.next();
+				recharge = again;
+				fasTagServices.getAccounts().get(fasTagId);
+				if(fasTagServices.getAccounts().get(fasTagId).getBalance() < FasTagAccount.categoryMinBalance.get(fasTagServices.getAccounts().get(fasTagId).getVehicleCategoryId()) ) {
+					fasTagServices.getAccounts().get(fasTagId);
+					System.out.println("Low balance, recharge FasTag to reach the min balace(" + FasTagAccount.categoryMinBalance.get(fasTagServices.getAccounts().get(fasTagId).getVehicleCategoryId()) + ") or more");
+					flag = 1;
+					rechargeStepsAndPayment(s, fasTagServices, fasTagId);
+				}
+			}
+			if(flag == 0)
+				System.out.println(fasTagServices.payToll(fasTagId));
+			flag = 0;
+		}else if(recharge.equals("N")) {
+			System.out.println(fasTagServices.payToll(fasTagId));
+			fasTagServices.getAccounts().get(fasTagId);
+			if(fasTagServices.getAccounts().get(fasTagId).getBalance() < FasTagAccount.categoryMinBalance.get(fasTagServices.getAccounts().get(fasTagId).getVehicleCategoryId()) ) {
+				rechargeStepsAndPayment(s, fasTagServices, fasTagId);
+			}	
+		}else {
+			System.out.println("Enter Y or N");
+			rechargeStepsAndPayment(s, fasTagServices, fasTagId);
+		}
+
+	}
+
+	public static void main(String[] args) {
+		FasTagAccount fasTagAccount1 = new FasTagAccount("AS23N8765", 1, 10);
+		FasTagAccount fasTagAccount2 = new FasTagAccount("UP44M5678", 2, 200);
+		FasTagAccount fasTagAccount3 = new FasTagAccount("MN78B2344", 3, 30);
+		FasTagAccount fasTagAccount4 = new FasTagAccount("MN78D5789", 4, 40);
+		FasTagAccount fasTagAccount5 = new FasTagAccount("AP56M6789", 5, 50);
+		FasTagAccount fasTagAccount6 = new FasTagAccount("JK54T4567", 6, 60);
+
+		FasTagServices fasTagServices = new FasTagServices();
+		fasTagServices.getAccounts().put(fasTagAccount1.getFastTagId(), fasTagAccount1);
+		fasTagServices.getAccounts().put(fasTagAccount2.getFastTagId(), fasTagAccount2);
+		fasTagServices.getAccounts().put(fasTagAccount3.getFastTagId(), fasTagAccount3);
+		fasTagServices.getAccounts().put(fasTagAccount4.getFastTagId(), fasTagAccount4);
+		fasTagServices.getAccounts().put(fasTagAccount5.getFastTagId(), fasTagAccount5);
+		fasTagServices.getAccounts().put(fasTagAccount6.getFastTagId(), fasTagAccount6);
+
+
+		Scanner s = new Scanner(System.in);
+		System.out.println("Enter FasTag id, if new user enter 0");
+		int fasTagId = s.nextInt();
+		String licensePlateId;
+		FasTagMain fasTagMain = new FasTagMain();
+
+		if(fasTagId == 0) {
+			System.out.println("Enter license plate id");
+			licensePlateId = s.next();
+			System.out.println("Enter vehicle category id");
+			System.out.println("TwoWheeler = 1; ThreeWheeler = 2; LMVNonCommercial = 3; LMVCommercial = 4; HMVNonCommercial = 5; HMVCommercial = 6");
+			int category = s.nextInt();
+			FasTagAccount fasTagAccount = new FasTagAccount(licensePlateId, category, 0);
+			fasTagServices.getAccounts().put(fasTagAccount.getFastTagId(), fasTagAccount);
+			System.out.println("Recharge! Your balance is zero");
+			fasTagMain.rechargeStepsAndPayment(s, fasTagServices, fasTagAccount.getFastTagId());
+
+		}else {
+			System.out.println("Enter license plate id");
+			licensePlateId = s.next();
+
+			if(fasTagServices.recognizeVehicle(fasTagId, licensePlateId)) {
+				System.out.println("Your current balance: " + fasTagServices.getAccounts().get(fasTagId).getBalance());	
+				System.out.println("Toll fee: " + FasTagAccount.categoryTollFee.get(fasTagServices.getAccounts().get(fasTagId).getVehicleCategoryId()));
+				System.out.println("Minimum balance required in your account to proceed further:" + FasTagAccount.categoryMinBalance.get(fasTagServices.getAccounts().get(fasTagId).getVehicleCategoryId()));
+				fasTagMain.rechargeStepsAndPayment(s, fasTagServices, fasTagId);
+			}else {
+				System.out.println("Invalid FasTag id/License plate id, check id and try again");
+
+			}
+		}
+	}
+}
+
+
+
+package project;
+
+public class InvalidPaymentInstrumentException extends RuntimeException{
+
+}
+
